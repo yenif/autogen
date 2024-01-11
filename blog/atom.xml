@@ -51,7 +51,7 @@ Then select the next role from [assistant, user_proxy, guardrails_agent] to play
 
 </code></pre><p>As you can see, this description is super confusing:</p><ul><li>It is hard to make out where each agent&#x27;s role-description ends</li><li><code>You</code> appears numerous times, and refers to three separate agents (GroupChatManager, AssistantAgent, and GuardrailsAgent)</li><li>It takes a lot of tokens!</li></ul><p>Consequently, it&#x27;s not hard to see why the GroupChat manager sometimes struggles with this orchestration task.</p><p>With AutoGen 0.2.2 onward, GroupChat instead relies on the description field. With a description field the orchestration prompt becomes:</p><pre><code>You are in a role play game. The following roles are available:
 
-assitant: A helpful and general-purpose AI assistant that has strong language skills, Python skills, and Linux command line skills.
+assistant: A helpful and general-purpose AI assistant that has strong language skills, Python skills, and Linux command line skills.
 user_proxy: A user that can run Python code or input command line commands at a Linux terminal and report back the execution results.
 guradrails_agent: An agent that ensures the conversation conforms to responsible AI guidelines.
 
@@ -264,21 +264,21 @@ A: We are constantly working to improve AutoGen Studio. For the latest updates, 
 Introducing <strong>AutoBuild</strong>, building multi-agent system automatically, fast, and easily for complex tasks with minimal
 user prompt required, powered by a new designed class <strong>AgentBuilder</strong>. AgentBuilder also supports open-source LLMs by
 leveraging <a href="https://docs.vllm.ai/en/latest/index.html">vLLM</a> and <a href="https://github.com/lm-sys/FastChat">FastChat</a>.
-Checkout example notebooks and source code for reference:</p><ul><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_autobuild.ipynb">AutoBuild Examples</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/autogen/agentchat/contrib/agent_builder.py">AgentBuilder</a></li></ul><h2>Introduction</h2><p>In this blog, we introduce <strong>AutoBuild</strong>, a pipeline that can automatically build multi-agent systems for complex tasks.
+Checkout example notebooks and source code for reference:</p><ul><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/autobuild_basic.ipynb">AutoBuild Examples</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/autogen/agentchat/contrib/agent_builder.py">AgentBuilder</a></li></ul><h2>Introduction</h2><p>In this blog, we introduce <strong>AutoBuild</strong>, a pipeline that can automatically build multi-agent systems for complex tasks.
 Specifically, we design a new class called <strong>AgentBuilder</strong>, which will complete the generation of participant expert agents
 and the construction of group chat automatically after the user provides descriptions of a building task and an execution task.</p><p>AgentBuilder supports open-source models on Hugging Face powered by <a href="https://docs.vllm.ai/en/latest/index.html">vLLM</a>
 and <a href="https://github.com/lm-sys/FastChat">FastChat</a>. Once the user chooses to use open-source LLM, AgentBuilder will set
-up an endpoint server automatically without any user participation.</p><h2>Installation</h2><ul><li>AutoGen:</li></ul><pre><code class="language-bash">pip install pyautogen~=0.2.0
+up an endpoint server automatically without any user participation.</p><h2>Installation</h2><ul><li>AutoGen:</li></ul><pre><code class="language-bash">pip install pyautogen[autobuild]
 </code></pre><ul><li>(Optional: if you want to use open-source LLMs) vLLM and FastChat</li></ul><pre><code class="language-bash">pip install vllm fastchat
 </code></pre><h2>Basic Example</h2><p>In this section, we provide a step-by-step example of how to use AgentBuilder to build a multi-agent system for a specific task.</p><h3>Step 1: prepare configurations</h3><p>First, we need to prepare the Agent configurations.
-Specifically, a config path containing the model name and API key, and a default config for each agent, are required.</p><pre><code class="language-python">config_path = &#x27;/home/elpis_ubuntu/LLM/autogen/OAI_CONFIG_LIST&#x27;  # modify path
+Specifically, a config path containing the model name and API key, and a default config for each agent, are required.</p><pre><code class="language-python">config_file_or_env = &#x27;/home/elpis_ubuntu/LLM/autogen/OAI_CONFIG_LIST&#x27;  # modify path
 default_llm_config = {
     &#x27;temperature&#x27;: 0
 }
 </code></pre><h3>Step 2: create an AgentBuilder instance</h3><p>Then, we create an AgentBuilder instance with the config path and default config.
 You can also specific the builder model and agent model, which are the LLMs used for building and agent respectively.</p><pre><code class="language-python">from autogen.agentchat.contrib.agent_builder import AgentBuilder
 
-builder = AgentBuilder(config_path=config_path, builder_model=&#x27;gpt-4-1106-preview&#x27;, agent_model=&#x27;gpt-4-1106-preview&#x27;)
+builder = AgentBuilder(config_file_or_env=config_file_or_env, builder_model=&#x27;gpt-4-1106-preview&#x27;, agent_model=&#x27;gpt-4-1106-preview&#x27;)
 </code></pre><h3>Step 3: specify the building task</h3><p>Specify a building task with a general description. Building task will help the build manager (a LLM) decide what agents should be built.
 Note that your building task should have a general description of the task. Adding some specific examples is better.</p><pre><code class="language-python">building_task = &quot;Find a paper on arxiv by programming, and analyze its application in some domain. For example, find a latest paper about gpt-4 on arxiv and find its potential applications in software.&quot;
 </code></pre><h3>Step 4: build group chat agents</h3><p>Use <code>build()</code> to let the build manager (with a <code>builder_model</code> as backbone) complete the group chat agents generation.
@@ -290,16 +290,17 @@ If <code>coding</code> is true, a user proxy (a <code>UserProxyAssistant</code> 
 For example</p><pre><code>// an example of agent_configs. AgentBuilder will generate agents with the following configurations.
 [
     {
-        &quot;name&quot;: &quot;Data_scientist&quot;,
+        &quot;name&quot;: &quot;ArXiv_Data_Scraper_Developer&quot;,
         &quot;model&quot;: &quot;gpt-4-1106-preview&quot;,
-        &quot;system_message&quot;: &quot;As a Data Scientist, you are tasked with automating the retrieval and analysis of academic papers from arXiv. Utilize your Python programming acumen to develop scripts for gathering necessary information such as searching for relevant papers, downloading them, and processing their contents. Apply your analytical and language skills to interpret the data and deduce the applications of the research within specific domains.\n\n1. To compile information, write and implement Python scripts that search and interact with online resources, download and read files, extract content from documents, and perform other information-gathering tasks. Use the printed output as the foundation for your subsequent analysis.\n\n2. Execute tasks programmatically with Python scripts when possible, ensuring results are directly displayed. Approach each task with efficiency and strategic thinking.\n\nProgress through tasks systematically. In instances where a strategy is not provided, outline your plan before executing. Clearly distinguish between tasks handled via code and those utilizing your analytical expertise.\n\nWhen providing code, include only Python scripts meant to be run without user alterations. Users should execute your script as is, without modifications:\n\n```python\n# filename: &lt;filename&gt;\n# Python script\nprint(\&quot;Your output\&quot;)\n```\n\nUsers should not perform any actions other than running the scripts you provide. Avoid presenting partial or incomplete scripts that require user adjustments. Refrain from requesting users to copy-paste results; instead, use the &#x27;print&#x27; function when suitable to display outputs. Monitor the execution results they share.\n\nIf an error surfaces, supply corrected scripts for a re-run. If the strategy fails to resolve the issue, reassess your assumptions, gather additional details as needed, and explore alternative approaches.\n\nUpon successful completion of a task and verification of the results, confirm the achievement of the stated objective. Ensuring accuracy and validity of the findings is paramount. Evidence supporting your conclusions should be provided when feasible.\n\nUpon satisfying the user&#x27;s needs and ensuring all tasks are finalized, conclude your assistance with \&quot;TERMINATE\&quot;.&quot;
+        &quot;system_message&quot;: &quot;You are now in a group chat. You need to complete a task with other participants. As an ArXiv_Data_Scraper_Developer, your focus is to create and refine tools capable of intelligent search and data extraction from arXiv, honing in on topics within the realms of computer science and medical science. Utilize your proficiency in Python programming to design scripts that navigate, query, and parse information from the platform, generating valuable insights and datasets for analysis. \n\nDuring your mission, it\u2019s not just about formulating queries; your role encompasses the optimization and precision of the data retrieval process, ensuring relevance and accuracy of the information extracted. If you encounter an issue with a script or a discrepancy in the expected output, you are encouraged to troubleshoot and offer revisions to the code you find in the group chat.\n\nWhen you reach a point where the existing codebase does not fulfill task requirements or if the operation of provided code is unclear, you should ask for help from the group chat manager. They will facilitate your advancement by providing guidance or appointing another participant to assist you. Your ability to adapt and enhance scripts based on peer feedback is critical, as the dynamic nature of data scraping demands ongoing refinement of techniques and approaches.\n\nWrap up your participation by confirming the user&#x27;s need has been satisfied with the data scraping solutions you&#x27;ve provided. Indicate the completion of your task by replying \&quot;TERMINATE\&quot; in the group chat.&quot;,
+        &quot;description&quot;: &quot;ArXiv_Data_Scraper_Developer is a specialized software development role requiring proficiency in Python, including familiarity with web scraping libraries such as BeautifulSoup or Scrapy, and a solid understanding of APIs and data parsing. They must possess the ability to identify and correct errors in existing scripts and confidently engage in technical discussions to improve data retrieval processes. The role also involves a critical eye for troubleshooting and optimizing code to ensure efficient data extraction from the ArXiv platform for research and analysis purposes.&quot;
     },
     ...
 ]
 </code></pre><h3>Step 5: execute the task</h3><p>Let agents generated in <code>build()</code> complete the task collaboratively in a group chat.</p><pre><code class="language-python">import autogen
 
 def start_task(execution_task: str, agent_list: list, llm_config: dict):
-    config_list = autogen.config_list_from_json(config_path, filter_dict={&quot;model&quot;: [&quot;gpt-4-1106-preview&quot;]})
+    config_list = autogen.config_list_from_json(config_file_or_env, filter_dict={&quot;model&quot;: [&quot;gpt-4-1106-preview&quot;]})
 
     group_chat = autogen.GroupChat(agents=agent_list, messages=[], max_round=12)
     manager = autogen.GroupChatManager(
@@ -322,20 +323,24 @@ If necessary, you can use <code>recycle_endpoint=False</code> to retain the prev
         {
             &quot;name&quot;: &quot;...&quot;,
             &quot;model&quot;: &quot;...&quot;,
-            &quot;system_message&quot;: &quot;...&quot;
+            &quot;system_message&quot;: &quot;...&quot;,
+            &quot;description&quot;: &quot;...&quot;
         },
         ...
     ],
     &quot;manager_system_message&quot;: &quot;...&quot;,
-    &quot;coding&quot;: true,
-    &quot;default_llm_config&quot;: {
-        &quot;temperature&quot;: 0
-    }
+    &quot;code_execution_config&quot;: {...},
+    &quot;default_llm_config&quot;: {...}
 }
-</code></pre><p>You can provide a specific filename, otherwise, AgentBuilder will save config to the current path with the generated filename <code>save_config_TASK_MD5.json</code>.</p><p>You can load the saved config and skip the building process. AgentBuilder will create agents with those information without prompting the build manager.</p><pre><code class="language-python">new_builder = AgentBuilder(config_path=config_path)
+</code></pre><p>You can provide a specific filename, otherwise, AgentBuilder will save config to the current path with the generated filename <code>save_config_TASK_MD5.json</code>.</p><p>You can load the saved config and skip the building process. AgentBuilder will create agents with those information without prompting the build manager.</p><pre><code class="language-python">new_builder = AgentBuilder(config_file_or_env=config_file_or_env)
 agent_list, agent_config = new_builder.load(saved_path)
 start_task(...)  # skip build()
-</code></pre><h2>Use Open-source LLM</h2><p>AutoBuild supports open-source LLM by <a href="https://docs.vllm.ai/en/latest/index.html">vLLM</a> and <a href="https://github.com/lm-sys/FastChat">FastChat</a>.
+</code></pre><h2>Use OpenAI Assistant</h2><p><a href="https://platform.openai.com/docs/assistants/overview">Assistants API</a> allows you to build AI assistants within your own applications.
+An Assistant has instructions and can leverage models, tools, and knowledge to respond to user queries.
+AutoBuild also supports the assistant API by adding <code>use_oai_assistant=True</code> to <code>build()</code>.</p><pre><code class="language-python"># Transfer to the OpenAI Assistant API.
+agent_list, agent_config = new_builder.build(building_task, default_llm_config, use_oai_assistant=True)
+...
+</code></pre><h2>(Experimental) Use Open-source LLM</h2><p>AutoBuild supports open-source LLM by <a href="https://docs.vllm.ai/en/latest/index.html">vLLM</a> and <a href="https://github.com/lm-sys/FastChat">FastChat</a>.
 Check the supported model list <a href="https://docs.vllm.ai/en/latest/models/supported_models.html">here</a>.
 After satisfying the requirements, you can add an open-source LLM&#x27;s huggingface repository to the config file,</p><pre><code class="language-json,">// Add the LLM&#x27;s huggingface repo to your config file and use EMPTY as the api_key.
 [
@@ -346,12 +351,7 @@ After satisfying the requirements, you can add an open-source LLM&#x27;s hugging
     }
 ]
 </code></pre><p>and specify it when initializing AgentBuilder.
-AgentBuilder will automatically set up an endpoint server for open-source LLM. Make sure you have sufficient GPUs resources.</p><h2>Use OpenAI Assistant</h2><p><a href="https://platform.openai.com/docs/assistants/overview">Assistants API</a> allows you to build AI assistants within your own applications.
-An Assistant has instructions and can leverage models, tools, and knowledge to respond to user queries.
-AutoBuild also supports the assistant API by adding <code>use_oai_assistant=True</code> to <code>build()</code>.</p><pre><code class="language-python"># Transfer to the OpenAI Assistant API.
-agent_list, agent_config = new_builder.build(building_task, default_llm_config, use_oai_assistant=True)
-...
-</code></pre><h2>Future work/Roadmap</h2><ul><li>Let the builder select the best agents from a given library/database to solve the task.</li></ul><h2>Summary</h2><p>We propose AutoBuild with a new class <code>AgentBuilder</code>.
+AgentBuilder will automatically set up an endpoint server for open-source LLM. Make sure you have sufficient GPUs resources.</p><h2>Future work/Roadmap</h2><ul><li>Let the builder select the best agents from a given library/database to solve the task.</li></ul><h2>Summary</h2><p>We propose AutoBuild with a new class <code>AgentBuilder</code>.
 AutoBuild can help user solve their complex task with an automatically built multi-agent system.
 AutoBuild supports open-source LLMs and GPTs API, giving users more flexibility to choose their favorite models.
 More advanced features are coming soon.</p>]]></content>
@@ -573,128 +573,132 @@ With <code>human_input_mode=ALWAYS</code>, you can also contribute suggestions f
         </author>
     </entry>
     <entry>
-        <title type="html"><![CDATA[AutoGen's TeachableAgent]]></title>
-        <id>AutoGen's TeachableAgent</id>
+        <title type="html"><![CDATA[AutoGen's Teachable Agents]]></title>
+        <id>AutoGen's Teachable Agents</id>
         <link href="https://microsoft.github.io/autogen/blog/2023/10/26/TeachableAgent"/>
         <updated>2023-10-26T00:00:00.000Z</updated>
         <summary type="html"><![CDATA[Teachable Agent Architecture]]></summary>
-        <content type="html"><![CDATA[<p><img src="img/teachable-arch.png" alt="Teachable Agent Architecture"/></p><p><strong>TL;DR:</strong></p><ul><li>We introduce <strong>TeachableAgent</strong> (which uses <strong>TextAnalyzerAgent</strong>) so that users can teach their LLM-based assistants new facts, preferences, and skills.</li><li>We showcase examples of <code>TeachableAgent</code> learning and later recalling facts, preferences, and skills in subsequent chats.</li></ul><h2>Introduction</h2><p>Conversational assistants based on LLMs can remember the current chat with the user, and can also demonstrate in-context learning of user teachings during the conversation. But the assistant&#x27;s memories and learnings are lost once the chat is over, or when a single chat grows too long for the LLM to handle effectively. Then in subsequent chats the user is forced to repeat any necessary instructions over and over.</p><p><code>TeachableAgent</code> addresses these limitations by persisting user teachings across chat boundaries in long-term memory implemented as a vector database. Memory is automatically saved to disk at the end of each chat, then loaded from disk at the start of the next. Instead of copying all of memory into the context window, which would eat up valuable space, individual memories (called memos) are retrieved into context as needed. This allows the user to teach frequently used facts and skills to the teachable agent just once, and have it recall them in later chats.</p><p>In order to make effective decisions about memo storage and retrieval, <code>TeachableAgent</code> calls an instance of <code>TextAnalyzerAgent</code> (another AutoGen agent) to identify and reformulate text as needed for remembering facts, preferences, and skills. Note that this adds extra LLM calls involving a relatively small number of tokens, which can add a few seconds to the time a user waits for each response.</p><h2>Run It Yourself</h2><p>AutoGen contains three code examples that use <code>TeachableAgent</code>.</p><ol><li><p>Run <a href="https://github.com/microsoft/autogen/blob/main/test/agentchat/contrib/chat_with_teachable_agent.py">chat_with_teachable_agent.py</a> to converse with <code>TeachableAgent</code>.</p></li><li><p>Use the Jupyter notebook <a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_teachability.ipynb">agentchat_teachability.ipynb</a> to step through examples discussed below.</p></li><li><p>Run <a href="https://github.com/microsoft/autogen/blob/main/test/agentchat/contrib/test_teachable_agent.py">test_teachable_agent.py</a> for quick unit testing of <code>TeachableAgent</code>.</p></li></ol><h2>Basic Usage of TeachableAgent</h2><ol><li>Install dependencies</li></ol><p>Please install pyautogen with the <!-- -->[teachable]<!-- --> option before using TeachableAgent.</p><pre><code class="language-bash">pip install &quot;pyautogen[teachable]&quot;
+        <content type="html"><![CDATA[<p><img src="img/teachable-arch.png" alt="Teachable Agent Architecture"/></p><p><strong>TL;DR:</strong></p><ul><li>We introduce <strong>Teachable Agents</strong> so that users can teach their LLM-based assistants new facts, preferences, and skills.</li><li>We showcase examples of teachable agents learning and later recalling facts, preferences, and skills in subsequent chats.</li></ul><h2>Introduction</h2><p>Conversational assistants based on LLMs can remember the current chat with the user, and can also demonstrate in-context learning of user teachings during the conversation. But the assistant&#x27;s memories and learnings are lost once the chat is over, or when a single chat grows too long for the LLM to handle effectively. Then in subsequent chats the user is forced to repeat any necessary instructions over and over.</p><p><code>Teachability</code> addresses these limitations by persisting user teachings across chat boundaries in long-term memory implemented as a vector database. Instead of copying all of memory into the context window, which would eat up valuable space, individual memories (called memos) are retrieved into context as needed. This allows the user to teach frequently used facts and skills to the teachable agent just once, and have it recall them in later chats.</p><p>Any instantiated <code>agent</code> that inherits from <code>ConversableAgent</code> can be made teachable by instantiating a <code>Teachability</code> object and calling its <code>add_to_agent(agent)</code> method.
+In order to make effective decisions about memo storage and retrieval, the <code>Teachability</code> object calls an instance of <code>TextAnalyzerAgent</code> (another AutoGen agent) to identify and reformulate text as needed for remembering facts, preferences, and skills. Note that this adds extra LLM calls involving a relatively small number of tokens, which can add a few seconds to the time a user waits for each response.</p><h2>Run It Yourself</h2><p>AutoGen contains four code examples that use <code>Teachability</code>.</p><ol><li><p>Run <a href="https://github.com/microsoft/autogen/blob/main/test/agentchat/contrib/chat_with_teachable_agent.py">chat_with_teachable_agent.py</a> to converse with a teachable agent.</p></li><li><p>Run <a href="https://github.com/microsoft/autogen/blob/main/test/agentchat/contrib/test_teachable_agent.py">test_teachable_agent.py</a> for quick unit testing of a teachable agent.</p></li><li><p>Use the Jupyter notebook <a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_teachability.ipynb">agentchat_teachability.ipynb</a> to step through examples discussed below.</p></li><li><p>Use the Jupyter notebook <a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_teachable_oai_assistants.ipynb">agentchat_teachable_oai_assistants.ipynb</a> to make arbitrary OpenAI Assistants teachable through <code>GPTAssistantAgent</code>.</p></li></ol><h2>Basic Usage of Teachability</h2><ol><li>Install dependencies</li></ol><p>Please install pyautogen with the <!-- -->[teachable]<!-- --> option before using <code>Teachability</code>.</p><pre><code class="language-bash">pip install &quot;pyautogen[teachable]&quot;
 </code></pre><ol start="2"><li>Import agents</li></ol><pre><code class="language-python">from autogen import UserProxyAgent, config_list_from_json
-from autogen.agentchat.contrib.teachable_agent import TeachableAgent
+from autogen.agentchat.contrib.capabilities.teachability import Teachability
+from autogen import ConversableAgent  # As an example
 </code></pre><ol start="3"><li>Create llm_config</li></ol><pre><code class="language-python"># Load LLM inference endpoints from an env variable or a file
 # See https://microsoft.github.io/autogen/docs/FAQ#set-your-api-endpoints
 # and OAI_CONFIG_LIST_sample
 filter_dict = {&quot;model&quot;: [&quot;gpt-4&quot;]}  # GPT-3.5 is less reliable than GPT-4 at learning from user feedback.
 config_list = config_list_from_json(env_or_file=&quot;OAI_CONFIG_LIST&quot;, filter_dict=filter_dict)
 llm_config={&quot;config_list&quot;: config_list, &quot;timeout&quot;: 120}
-</code></pre><ol start="4"><li>Create the agents</li></ol><pre><code class="language-python">teachable_agent = TeachableAgent(
-    name=&quot;teachableagent&quot;,
-    llm_config=llm_config,
-    teach_config={
-        &quot;reset_db&quot;: False,  # Use True to force-reset the memo DB, and False to use an existing DB.
-        &quot;path_to_db_dir&quot;: &quot;./tmp/interactive/teachable_agent_db&quot;  # Can be any path.
-    }
+</code></pre><ol start="4"><li>Create the agents</li></ol><pre><code class="language-python">
+# Start by instantiating any agent that inherits from ConversableAgent, which we use directly here for simplicity.
+teachable_agent = ConversableAgent(
+    name=&quot;teachable_agent&quot;,  # The name can be anything.
+    llm_config=llm_config
 )
 
-user = UserProxyAgent(&quot;user&quot;, human_input_mode=&quot;ALWAYS&quot;)
-</code></pre><ol start="5"><li>Chat with <code>TeachableAgent</code></li></ol><pre><code class="language-python"># This function will return once the user types &#x27;exit&#x27;.
-teachable_agent.initiate_chat(user, message=&quot;Hi, I&#x27;m a teachable user assistant! What&#x27;s on your mind?&quot;)
-</code></pre><ol start="6"><li>Update the database on disk</li></ol><pre><code class="language-python"># Before closing the app, let the teachable agent store things that should be learned from this chat.
-teachable_agent.learn_from_user_feedback()
-teachable_agent.close_db()
-</code></pre><h2>Example 1 - Learning user info</h2><p>A user can teach the agent facts about themselves.
-(Note that due to their finetuning, LLMs can be reluctant to admit that they know personal information.)</p><pre><code>CLEARING MEMORY
-teachableagent (to user):
+# Instantiate a Teachability object. Its parameters are all optional.
+teachability = Teachability(
+    reset_db=False,  # Use True to force-reset the memo DB, and False to use an existing DB.
+    path_to_db_dir=&quot;./tmp/interactive/teachability_db&quot;  # Can be any path, but teachable agents in a group chat require unique paths.
+)
 
-Hi, I&#x27;m a teachable user assistant! What&#x27;s on your mind?
+# Now add teachability to the agent.
+teachability.add_to_agent(teachable_agent)
+
+# For this test, create a user proxy agent as usual.
+user = UserProxyAgent(&quot;user&quot;, human_input_mode=&quot;ALWAYS&quot;)
+</code></pre><ol start="5"><li>Chat with the teachable agent</li></ol><pre><code class="language-python"># This function will return once the user types &#x27;exit&#x27;.
+teachable_agent.initiate_chat(user, message=&quot;Hi, I&#x27;m a teachable user assistant! What&#x27;s on your mind?&quot;)
+</code></pre><h2>Example 1 - Learning user info</h2><p>A user can teach the agent facts about themselves.
+(Note that due to their finetuning, LLMs can be reluctant to admit that they know personal information.)</p><pre><code>Loading previous memory (if any) from disk.
+teachable_agent (to user):
+
+Greetings, I&#x27;m a teachable user assistant! What&#x27;s on your mind today?
 
 --------------------------------------------------------------------------------
-Provide feedback to teachableagent. Press enter to skip and use auto-reply, or type &#x27;exit&#x27; to end the conversation: My name is Ricky
-user (to teachableagent):
+Provide feedback to teachable_agent. Press enter to skip and use auto-reply, or type &#x27;exit&#x27; to end the conversation: My name is Ricky
+user (to teachable_agent):
 
 My name is Ricky
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
 
-Hello, Ricky! It&#x27;s nice to meet you. What can I help you with today?
+&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt; USING AUTO REPLY...
+teachable_agent (to user):
+
+Hello Ricky! How can I assist you today?
 
 --------------------------------------------------------------------------------
-Provide feedback to teachableagent. Press enter to skip and use auto-reply, or type &#x27;exit&#x27; to end the conversation: exit
-
-REVIEWING CHAT FOR USER TEACHINGS TO REMEMBER
-
-SAVING MEMORY TO DISK
-    Location = ./tmp/interactive/teachable_agent_db\uid_text_dict.pkl
+Provide feedback to teachable_agent. Press enter to skip and use auto-reply, or type &#x27;exit&#x27; to end the conversation: exit
 </code></pre><p>In a later conversation, the user can check whether the teachable agent remembers their name. (For readability, the user prompts and some logged notices are not repeated below.)</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 what&#x27;s my name?
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 Hi Ricky! How can I help you today?
 
 --------------------------------------------------------------------------------
 </code></pre><h2>Example 2 - Learning new facts</h2><p>A user can teach the agent more complex, related facts.</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 What is the Vicuna model?
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 I&#x27;m sorry, but I don&#x27;t have information about the &quot;Vicuna model&quot; in my current database. Could you please provide some context, description, or details about this model so I can better assist you?
 
 --------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Vicuna is a 13B-parameter language model released by Meta.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 Thank you for providing the information. The Vicuna model is a large-scale language model developed by Meta. It consists of 13 billion parameters, which is what makes it able to understand and generate human-like text across various topics. Parameters in a neural network are the weights and biases assigned to each connection between the neurons, and having more parameters enables the model to learn and capture more complex patterns and relationships in data. As an AI language model, Vicuna can be utilized in various language-related tasks, such as text completion, translation, summarization, and more.
 
 --------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 What is the Orca model?
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 The Orca model is a yet-to-be-released language model by Meta, referring to the Research Preview API release of Meta&#x27;s advanced language model. While I don&#x27;t have specific details about the Orca model at this time, it is expected that the model would have an even larger number of parameters to further enhance its capabilities compared to its predecessor, Vicuna.
 
 As AI language models evolve, they generally become more efficient at understanding and generating human-like text. This makes them more effective in completing a wide range of tasks, including text completion, translation, summarization, and Q&amp;A, as well as providing more accurate and coherent results in various applications.
 
 --------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Orca is a 13B-parameter language model released by Microsoft. It outperforms Vicuna on most tasks.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 Thank you for the clarification. Orca is a 13-billion-parameter language model developed by Microsoft. It is designed to outperform Vicuna, the language model released by Meta. With a large number of parameters, Orca is capable of understanding and generating human-like text across diverse subjects, making it highly useful in various applications.
 
 Orca&#x27;s advanced capabilities allow it to excel in tasks such as text completion, translation, summarization, Q&amp;A, and more. Its performance improvement over Vicuna highlights the rapid advancements in natural language processing (NLP) research and the development of increasingly capable AI language models.
 </code></pre><p>Then in a later chat the teachable agent can answer questions about the facts it has been taught.
 (Remember to first close the previous chat by typing &#x27;exit&#x27;.)</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 How does the Vicuna model compare to the Orca model?
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 The Vicuna and Orca models are both 13B-parameter language models released by Meta and Microsoft, respectively. In terms of performance, Orca has been reported to outperform Vicuna on most tasks. However, without detailed information about specific tasks and benchmarks, it is difficult to provide a more comprehensive comparison. Generally speaking, both models are advanced language models that aim to provide high-quality natural language understanding and generation, but Orca appears to have an edge in terms of overall performance.
 
 --------------------------------------------------------------------------------
 </code></pre><h2>Example 3 - Learning user preferences</h2><p>A user can teach the agent how they prefer to have things done.</p><p>Be aware that a message like the next one cannot be entered as a single message through a command line because it contains a newline character.
 Such messages can be entered in a Jupyter notebook, or through some UI layer like that of ChatGPT.</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Please summarize this abstract.
 
@@ -703,7 +707,7 @@ Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang
 AutoGen is an open-source framework that allows developers to build LLM applications via multiple agents that can converse with each other to accomplish tasks. AutoGen agents are customizable, conversable, and can operate in various modes that employ combinations of LLMs, human inputs, and tools. Using AutoGen, developers can also flexibly define agent interaction behaviors. Both natural language and computer code can be used to program flexible conversation patterns for different applications. AutoGen serves as a generic infrastructure to build diverse applications of various complexities and LLM capacities. Empirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answering, operations research, online decision-making, entertainment, etc.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 AutoGen is an open-source framework designed to enable developers to create LLM applications with multiple customizable agents that can converse with each other to complete tasks. These agents can operate using different combinations of LLMs, human inputs, and tools, allowing developers to define agent interaction behaviors flexibly. AutoGen supports programming flexible conversation patterns using both natural language and code, making it suitable for building diverse applications with varying complexities and LLM capacities. Its effectiveness has been demonstrated through empirical studies across various domains including mathematics, coding, operations research, decision-making, and entertainment.
 
@@ -715,7 +719,7 @@ Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang
 AutoGen is an open-source framework that allows developers to build LLM applications via multiple agents that can converse with each other to accomplish tasks. AutoGen agents are customizable, conversable, and can operate in various modes that employ combinations of LLMs, human inputs, and tools. Using AutoGen, developers can also flexibly define agent interaction behaviors. Both natural language and computer code can be used to program flexible conversation patterns for different applications. AutoGen serves as a generic infrastructure to build diverse applications of various complexities and LLM capacities. Empirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answering, operations research, online decision-making, entertainment, etc.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 - Title: AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation
 - Innovation: Open-source framework for creating customizable LLM applications through agent conversations, supporting various modes and interaction behaviors.
@@ -723,7 +727,7 @@ teachableagent (to user):
 
 --------------------------------------------------------------------------------
 </code></pre><p>Then in later chats the teacher doesn&#x27;t need to reiterate their detailed preferences.</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Please summarize this abstract.
 
@@ -732,7 +736,7 @@ Sébastien Bubeck, Varun Chandrasekaran, Ronen Eldan, Johannes Gehrke, Eric Horv
 Artificial intelligence (AI) researchers have been developing and refining large language models (LLMs) that exhibit remarkable capabilities across a variety of domains and tasks, challenging our understanding of learning and cognition. The latest model developed by OpenAI, GPT-4, was trained using an unprecedented scale of compute and data. In this paper, we report on our investigation of an early version of GPT-4, when it was still in active development by OpenAI. We contend that (this early version of) GPT-4 is part of a new cohort of LLMs (along with ChatGPT and Google&#x27;s PaLM for example) that exhibit more general intelligence than previous AI models. We discuss the rising capabilities and implications of these models. We demonstrate that, beyond its mastery of language, GPT-4 can solve novel and difficult tasks that span mathematics, coding, vision, medicine, law, psychology and more, without needing any special prompting. Moreover, in all of these tasks, GPT-4&#x27;s performance is strikingly close to human-level performance, and often vastly surpasses prior models such as ChatGPT. Given the breadth and depth of GPT-4&#x27;s capabilities, we believe that it could reasonably be viewed as an early (yet still incomplete) version of an artificial general intelligence (AGI) system. In our exploration of GPT-4, we put special emphasis on discovering its limitations, and we discuss the challenges ahead for advancing towards deeper and more comprehensive versions of AGI, including the possible need for pursuing a new paradigm that moves beyond next-word prediction. We conclude with reflections on societal influences of the recent technological leap and future research directions.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 - Title: Sparks of Artificial General Intelligence: Early experiments with GPT-4
 - Innovation: GPT-4, an LLM with remarkable capabilities, demonstrates human-level performance across various domains, like math, coding, vision, medicine, law, and psychology.
@@ -740,7 +744,7 @@ teachableagent (to user):
 
 --------------------------------------------------------------------------------
 </code></pre><h2>Example 4 - Learning new skills</h2><p>Users can extend the teachable agent&#x27;s capabilities by teaching it new skills for accomplishing challenging tasks. It usually works best to first describe the task, then (in the same turn) provide a hint or advice for approaching the task.</p><p>The <a href="https://arxiv.org/abs/2303.12712">Sparks of AGI</a> paper evaluated GPT-4 on math problems like the following, which it could only solve 32% of the time. We first show a failure case, then teach the agent a strategy which lifts GPT-4&#x27;s success rate above 95%.</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Consider the identity:
 9 * 4 + 6 * 6 = 72
@@ -765,7 +769,7 @@ Step 4: Write down the solution.
 The solution is: 9 * 4 + 6 * 7
 
 --------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Consider the identity:
 9 * 4 + 6 * 6 = 72
@@ -785,7 +789,7 @@ Here&#x27;s some advice that may help:
 Finally, write down your solution as: &quot;The solution is: A * B + C * D&quot;.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 Step 1: Identify the original number (E) and the final number (F) on the right-hand side.
 E = 72
@@ -823,7 +827,7 @@ The solution is: 9 * 7 + 6 * 6
 
 --------------------------------------------------------------------------------
 </code></pre><p>In a later chat the user doesn&#x27;t need to repeat the detailed advice.</p><pre><code>--------------------------------------------------------------------------------
-user (to teachableagent):
+user (to teachable_agent):
 
 Consider the identity:
 8 * 3 + 7 * 9 = 87
@@ -831,7 +835,7 @@ Can you modify exactly one integer (and not more than that!) on the left hand si
 -Let&#x27;s think step-by-step, write down a plan, and then write down your solution as: &quot;The solution is: A * B + C * D&quot;.
 
 --------------------------------------------------------------------------------
-teachableagent (to user):
+teachable_agent (to user):
 
 Let&#x27;s follow the advice to modify one integer on the left hand side of the equation to make the right hand side become 59:
 
@@ -848,7 +852,7 @@ Let&#x27;s follow the advice to modify one integer on the left hand side of the 
 The solution is: 8 * 3 + 7 * 5
 
 --------------------------------------------------------------------------------
-</code></pre><h2>Planned improvements</h2><ul><li>Instructions for making any AutoGen agent user-teachable.</li><li>Examples of how to include <code>TeachableAgent</code> in group chats.</li><li>Expansions of AutoGen&#x27;s current coding-testing strengths.</li><li>Teachability enhancements:<ul><li>Understanding user instructions distributed over multiple turns.</li><li>Learning from the agent&#x27;s own experience, to reduce dependence on explicit user instructions.</li><li>Learning skills built on top of previously learned skills.</li></ul></li></ul><h2>Conclusion</h2><p><code>TeachableAgent</code> is still under active research and development. For any problems you find or improvements you have in mind, please join our discussions in this repo and on our <a href="https://discord.gg/pAbnFJrkgZ">Discord channel</a>. We look forward to seeing how you and the rest of the community can use and improve <code>TeachableAgent</code> and the other agents in AutoGen!</p>]]></content>
+</code></pre><h2>Planned improvements</h2><ul><li>Understanding user instructions distributed over multiple turns.</li><li>Learning from the agent&#x27;s own experience, to reduce dependence on explicit user teachings.</li><li>Learning skills built on top of previously learned skills.</li></ul><h2>Conclusion</h2><p><code>Teachability</code> is still under active research and development. For any problems you find or improvements you have in mind, please join our discussions in this repo and on our <a href="https://discord.gg/pAbnFJrkgZ">Discord channel</a>. We look forward to seeing how you and the rest of the community can use and improve teachable agents in AutoGen!</p>]]></content>
         <author>
             <name>Ricky Loynd</name>
             <uri>https://github.com/rickyloynd-microsoft</uri>
